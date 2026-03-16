@@ -123,12 +123,9 @@ function App() {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    let finalPrompt = input;
-    if (attachedFile) {
-      finalPrompt = `File Analysis (${attachedFile.filename}):\n\n${attachedFile.content}\n\nQuestion: ${input}`;
-    }
-
-    const userMessage = { role: 'user', content: finalPrompt };
+    // The backend now handles RAG retrieval from the indexed file,
+    // so we don't need to send the full content in the prompt anymore!
+    const userMessage = { role: 'user', content: input };
     const displayMessage = { role: 'user', content: input + (attachedFile ? ` (📎 ${attachedFile.filename})` : '') };
     
     setMessages(prev => [...prev, displayMessage]);
@@ -237,6 +234,12 @@ function App() {
   const startNewChat = () => {
     setActiveConvId(null);
     setMessages([]);
+    // Clear RAG index on new chat
+    fetch('/api/rag', { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    }).catch(console.error);
+    
     if (window.innerWidth <= 768) setIsSidebarOpen(false);
   };
 

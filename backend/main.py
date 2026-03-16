@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import pymupdf4llm
 
-from . import schemas, model_handler, database, models, auth
+from . import schemas, model_handler, database, models, auth, rag_handler
 
 # Initialize Database
 models.Base.metadata.create_all(bind=database.engine)
@@ -138,7 +138,20 @@ async def upload_file(
         if os.path.exists(temp_path):
             os.remove(temp_path)
     
+    # Index for RAG
+    if content:
+        rag = rag_handler.get_rag_handler()
+        rag.add_document(content)
+    
     return {"content": content, "filename": filename}
+
+@app.delete("/api/rag")
+async def clear_rag(
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    rag = rag_handler.get_rag_handler()
+    rag.clear()
+    return {"message": "RAG index cleared"}
 
 @app.post("/api/chat")
 async def chat(
@@ -165,13 +178,25 @@ async def chat(
 
         async def stream_generator():
             handler = model_handler.get_model_handler()
+            rag = rag_handler.get_rag_handler()
+            
+            # Retrieval Step
+            context = rag.get_context(last_msg.content)
+            
+            # Augment prompt if context exists
+            augmented_messages = list(request.messages)
+            if context:
+                rag_prompt = f"Use the following context to answer the user's question. If you don't know the answer, just say you don't know based on the context.\n\nContext:\n{context}\n\nQuestion: {last_msg.content}"
+                # Replace the last user message content with the augmented one for the LLM
+                augmented_messages[-1] = schemas.ChatMessage(role="user", content=rag_prompt)
+
             full_content = ""
             
             # Send initial metadata
             yield f"event: metadata\ndata: {{\"conversation_id\": \"{conv_id}\"}}\n\n"
             
             for chunk in handler.generate_stream(
-                messages=request.messages,
+                messages=augmented_messages,
                 max_tokens=request.max_tokens,
                 temperature=request.temperature
             ):
