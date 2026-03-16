@@ -1,0 +1,17 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+chat_history.db
+
+# Virtual environments
+.venv
+
+# Frontend
+node_modules/
+static/
+.env
+.DS_Store

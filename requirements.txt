@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-multipart
+pydantic
+langgraph
+langchain-community
+langchain-core
+langchain-tavily
+llama-cpp-python
+tavily-python
+sqlalchemy
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
