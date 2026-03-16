@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
-import pypdf
+import pymupdf4llm
 
 from . import schemas, model_handler, database, models, auth
 
@@ -121,14 +121,22 @@ async def upload_file(
 ):
     content = ""
     filename = file.filename
-    if filename.endswith(".pdf"):
-        pdf_reader = pypdf.PdfReader(io.BytesIO(await file.read()))
-        for page in pdf_reader.pages:
-            content += page.extract_text() + "\n"
-    else:
-        # Default to text
-        file_bytes = await file.read()
-        content = file_bytes.decode("utf-8", errors="ignore")
+    temp_path = f"temp_{filename}"
+    
+    try:
+        if filename.endswith(".pdf"):
+            # PyMuPDF4LLM works best with a file path
+            with open(temp_path, "wb") as f:
+                f.write(await file.read())
+            
+            content = pymupdf4llm.to_markdown(temp_path)
+        else:
+            # Default to text
+            file_bytes = await file.read()
+            content = file_bytes.decode("utf-8", errors="ignore")
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
     
     return {"content": content, "filename": filename}
 

@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 python-multipart
-pypdf
+pymupdf4llm
 pydantic
 langgraph
 langchain-community
