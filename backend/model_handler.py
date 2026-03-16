@@ -5,13 +5,20 @@ from .schemas import ChatMessage
 
 class ModelHandler:
     def __init__(self):
-        model_path = os.path.join(os.getcwd(), "models", "qwen2.5-0.5b-q6_k.gguf")
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model file not found at {model_path}")
+        # Support for Llama 3.2 1B Instruct
+        model_path = os.path.join(os.getcwd(), "models", "llama-3.2-1b-instruct-q4_k_m.gguf")
         
+        # Fallback to Qwen if Llama not found (prevents crash during transition)
+        if not os.path.exists(model_path):
+            model_path = os.path.join(os.getcwd(), "models", "qwen2.5-0.5b-q6_k.gguf")
+            
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"No model found. Please download Llama 3.2 1B into {model_path}")
+        
+        print(f"Loading Brain: {os.path.basename(model_path)}")
         self.llm = Llama(
             model_path=model_path,
-            n_ctx=2048,
+            n_ctx=4096, # Increased context for Llama 3.2 RAG
             n_threads=os.cpu_count() or 4,
             verbose=False
         )

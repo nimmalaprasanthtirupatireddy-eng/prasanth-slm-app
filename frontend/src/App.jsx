@@ -281,7 +281,7 @@ function App() {
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <button className="mobile-menu-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>☰</button>
             <div className="title-group">
-              <h1>Qwen2.5 <span style={{ fontWeight: 300, color: 'var(--text-muted)' }}>Lab</span></h1>
+              <h1>Llama 3.2 <span style={{ fontWeight: 300, color: 'var(--text-muted)' }}>Lab</span></h1>
             </div>
           </div>
           <div className="status-badge">
@@ -292,7 +292,7 @@ function App() {
         <main className="chat-window">
           {messages.length === 0 && (
             <div style={{ textAlign: 'center', marginTop: '4rem', opacity: 0.5 }}>
-              <h2>Qwen2.5 Advanced Chat</h2>
+              <h2>Llama 3.2 Intelligence</h2>
               <p>Upload files or start a conversation</p>
             </div>
           )}

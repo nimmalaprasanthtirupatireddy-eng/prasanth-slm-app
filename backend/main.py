@@ -14,7 +14,7 @@ from . import schemas, model_handler, database, models, auth, rag_handler
 # Initialize Database
 models.Base.metadata.create_all(bind=database.engine)
 
-app = FastAPI(title="Qwen2.5 Mobile Chat API")
+app = FastAPI(title="Llama 3.2 Mobile Chat API")
 
 # Enable CORS
 app.add_middleware(
