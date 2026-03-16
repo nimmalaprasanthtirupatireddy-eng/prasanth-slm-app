@@ -99,12 +99,18 @@ function App() {
     const file = event.target.files[0];
     if (!file) return;
 
+    let currentid = activeConvId;
+    if (!currentid) {
+        currentid = crypto.randomUUID();
+        setActiveConvId(currentid);
+    }
+
     setIsUploading(true);
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      const response = await fetch('/api/upload', {
+      const response = await fetch(`/api/upload?conversation_id=${currentid}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
         body: formData
@@ -233,13 +239,16 @@ function App() {
   };
 
   const startNewChat = () => {
+    // Clear RAG index for the CURRENT session before starting a new one
+    if (activeConvId) {
+        fetch(`/api/rag/${activeConvId}`, { 
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        }).catch(console.error);
+    }
+
     setActiveConvId(null);
     setMessages([]);
-    // Clear RAG index on new chat
-    fetch('/api/rag', { 
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-    }).catch(console.error);
     
     if (window.innerWidth <= 768) setIsSidebarOpen(false);
   };

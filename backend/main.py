@@ -116,6 +116,7 @@ def delete_conversation(
 
 @app.post("/api/upload", response_model=schemas.FileUploadResponse)
 async def upload_file(
+    conversation_id: str,
     file: UploadFile = File(...),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -138,20 +139,21 @@ async def upload_file(
         if os.path.exists(temp_path):
             os.remove(temp_path)
     
-    # Index for RAG
+    # Index for RAG in specific conversation
     if content:
         rag = rag_handler.get_rag_handler()
-        rag.add_document(content)
+        rag.add_document(content, conversation_id)
     
     return {"content": content, "filename": filename}
 
-@app.delete("/api/rag")
+@app.delete("/api/rag/{conversation_id}")
 async def clear_rag(
+    conversation_id: str,
     current_user: models.User = Depends(auth.get_current_user)
 ):
     rag = rag_handler.get_rag_handler()
-    rag.clear()
-    return {"message": "RAG index cleared"}
+    rag.clear(conversation_id)
+    return {"message": f"RAG index cleared for {conversation_id}"}
 
 @app.post("/api/chat")
 async def chat(
@@ -181,22 +183,26 @@ async def chat(
             rag = rag_handler.get_rag_handler()
             
             # Retrieval Step
-            context = rag.get_context(last_msg.content)
-            print(f"DEBUG RAG - Query: {last_msg.content}")
+            context = rag.get_context(last_msg.content, conv_id)
+            print(f"DEBUG RAG - Conv: {conv_id} - Query: {last_msg.content}")
             print(f"DEBUG RAG - Context Found: {context[:200]}...")
             
             # Augment prompt if context exists
             augmented_messages = list(request.messages)
             if context:
-                # Optimized prompt for Qwen2.5-0.5B: shorter, more direct instructions
-                rag_prompt = f"""Use the provided context to answer the user's query. 
+                # Premium prompt for Llama 3.2: High accuracy and rich formatting
+                rag_prompt = f"""You are a helpful AI assistant. Use the provided context to answer the user's question accurately. 
+Format your response using rich Markdown, including headers, bullet points, and bold text where appropriate.
+If the information is not in the context, clearly state that you don't know rather than hallucinating.
 
-Context:
+---
+CONTEXT:
 {context}
+---
 
-User Query: {last_msg.content}
+USER QUESTION: {last_msg.content}
 
-Answer:"""
+EXPERT RESPONSE:"""
                 # Replace the last user message content with the augmented one for the LLM
                 augmented_messages[-1] = schemas.ChatMessage(role="user", content=rag_prompt)
 

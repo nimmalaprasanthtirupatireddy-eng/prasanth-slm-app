@@ -17,56 +17,77 @@ class RAGHandler:
             chunk_overlap=150,
             add_start_index=True
         )
-        # Vector store storage path
-        self.db_path = os.path.join(os.getcwd(), "faiss_db")
-        self.vector_store = None
-        
-        # Ensure models and db directories exist
+        # Root vector store directory
+        self.root_db_path = os.path.join(os.getcwd(), "faiss_db")
         os.makedirs(os.path.join(os.getcwd(), "models", "embeddings"), exist_ok=True)
-        os.makedirs(self.db_path, exist_ok=True)
+        os.makedirs(self.root_db_path, exist_ok=True)
 
-    def add_document(self, text: str):
-        """Chunk text and add to the FAISS vector store."""
+    def _get_conv_path(self, conversation_id: str) -> str:
+        return os.path.join(self.root_db_path, conversation_id)
+
+    def add_document(self, text: str, conversation_id: str):
+        """Chunk text and add to the FAISS vector store for a specific conversation."""
+        if not conversation_id:
+            return
+            
+        conv_path = self._get_conv_path(conversation_id)
+        os.makedirs(conv_path, exist_ok=True)
+        
         # Create chunks
         chunks = self.text_splitter.split_text(text)
         
-        if self.vector_store is None:
-            # Create first vector store
-            self.vector_store = FAISS.from_texts(chunks, self.embeddings)
+        # Load existing index if it exists
+        if os.path.exists(os.path.join(conv_path, "index.faiss")):
+            vector_store = FAISS.load_local(
+                conv_path, 
+                self.embeddings, 
+                allow_dangerous_deserialization=True
+            )
+            vector_store.add_texts(chunks)
         else:
-            # Add to existing store
-            self.vector_store.add_texts(chunks)
+            vector_store = FAISS.from_texts(chunks, self.embeddings)
         
         # Save local index
-        self.vector_store.save_local(self.db_path)
+        vector_store.save_local(conv_path)
 
-    def get_context(self, query: str, k: int = 7) -> str:
-        """Search the vector store for relevant chunks."""
-        if self.vector_store is None:
-            # Try loading existing index if present
-            if os.path.exists(os.path.join(self.db_path, "index.faiss")):
-                self.vector_store = FAISS.load_local(
-                    self.db_path, 
-                    self.embeddings, 
-                    allow_dangerous_deserialization=True
-                )
-            else:
-                return ""
+    def get_context(self, query: str, conversation_id: str, k: int = 7) -> str:
+        """Search the vector store for relevant chunks if it exists for this conversation."""
+        if not conversation_id:
+            return ""
+            
+        conv_path = self._get_conv_path(conversation_id)
         
-        # Perform similarity search
-        docs = self.vector_store.similarity_search(query, k=k)
+        # SPEED OPTIMIZATION: If no index exists, return early without any embedding or search
+        if not os.path.exists(os.path.join(conv_path, "index.faiss")):
+            return ""
         
-        # Combine snippets into context
-        context = "\n\n---\n\n".join([doc.page_content for doc in docs])
-        return context
+        try:
+            # Load index for this specific conversation
+            vector_store = FAISS.load_local(
+                conv_path, 
+                self.embeddings, 
+                allow_dangerous_deserialization=True
+            )
+            
+            # Perform similarity search
+            docs = vector_store.similarity_search(query, k=k)
+            
+            # Combine snippets into context
+            context = "\n\n---\n\n".join([doc.page_content for doc in docs])
+            return context
+        except Exception as e:
+            print(f"RAG Error: {e}")
+            return ""
 
-    def clear(self):
-        """Reset the vector store."""
+    def clear(self, conversation_id: str):
+        """Reset the vector store for a specific conversation."""
+        if not conversation_id:
+            return
+            
+        conv_path = self._get_conv_path(conversation_id)
         import shutil
-        if os.path.exists(self.db_path):
-            shutil.rmtree(self.db_path)
-            os.makedirs(self.db_path)
-        self.vector_store = None
+        if os.path.exists(conv_path):
+            shutil.rmtree(conv_path)
 
 # Singleton instance
 rag_handler = None
