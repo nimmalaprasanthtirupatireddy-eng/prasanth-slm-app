@@ -7,13 +7,12 @@ faiss-cpu
 sentence-transformers
 langchain
 langchain-community
-langgraph
-langchain-community
 langchain-core
+langchain-huggingface
+langgraph
 langchain-tavily
 llama-cpp-python
 tavily-python
 sqlalchemy
 passlib[bcrypt]
 python-jose[cryptography]
-python-multipart
