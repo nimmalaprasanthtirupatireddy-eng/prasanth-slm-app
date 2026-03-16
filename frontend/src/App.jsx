@@ -10,6 +10,7 @@ function App() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(true);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -17,6 +18,23 @@ function App() {
   };
 
   useEffect(() => {
+    const verifySession = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) setIsLoggedIn(true);
+          else localStorage.removeItem('token');
+        } catch (e) {
+          console.error("Session verification failed", e);
+        }
+      }
+      setIsVerifying(false);
+    };
+    verifySession();
+
     const handleResize = () => {
       if (window.innerWidth > 768) setIsSidebarOpen(true);
       else setIsSidebarOpen(false);
@@ -123,6 +141,21 @@ function App() {
     setMessages([]);
     if (window.innerWidth <= 768) setIsSidebarOpen(false);
   };
+
+  if (isVerifying) {
+    return (
+      <div className="auth-overlay">
+        <div className="auth-card" style={{ textAlign: 'center' }}>
+          <div className="typing-indicator" style={{ margin: '0 auto 1rem' }}>
+            <div className="dot"></div>
+            <div className="dot"></div>
+            <div className="dot"></div>
+          </div>
+          <p style={{ color: 'var(--text-muted)' }}>Verifying session...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     return <Auth onLogin={() => setIsLoggedIn(true)} />;

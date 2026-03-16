@@ -25,8 +25,20 @@ const Auth = ({ onLogin }) => {
         localStorage.setItem('token', data.access_token);
         onLogin();
       } else {
-        setIsLogin(true);
-        setError('Account created! Please login.');
+        // Auto-login after registration
+        const loginResponse = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const loginData = await loginResponse.json();
+        if (loginResponse.ok) {
+          localStorage.setItem('token', loginData.access_token);
+          onLogin();
+        } else {
+          setIsLogin(true);
+          setError('Account created! Please login.');
+        }
       }
     } catch (err) {
       setError(err.message);
