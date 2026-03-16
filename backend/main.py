@@ -182,11 +182,21 @@ async def chat(
             
             # Retrieval Step
             context = rag.get_context(last_msg.content)
+            print(f"DEBUG RAG - Query: {last_msg.content}")
+            print(f"DEBUG RAG - Context Found: {context[:200]}...")
             
             # Augment prompt if context exists
             augmented_messages = list(request.messages)
             if context:
-                rag_prompt = f"Use the following context to answer the user's question. If you don't know the answer, just say you don't know based on the context.\n\nContext:\n{context}\n\nQuestion: {last_msg.content}"
+                # Optimized prompt for Qwen2.5-0.5B: shorter, more direct instructions
+                rag_prompt = f"""Use the provided context to answer the user's query. 
+
+Context:
+{context}
+
+User Query: {last_msg.content}
+
+Answer:"""
                 # Replace the last user message content with the augmented one for the LLM
                 augmented_messages[-1] = schemas.ChatMessage(role="user", content=rag_prompt)
 

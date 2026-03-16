@@ -164,7 +164,16 @@ function App() {
         const lines = chunk.split('\n');
         
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          if (line.startsWith('event: metadata')) {
+            // Skip the event line
+          } else if (line.startsWith('data: {"conversation_id"')) {
+             // Handle metadata
+             const data = JSON.parse(line.slice(6));
+             if (!activeConvId) {
+                setActiveConvId(data.conversation_id);
+                fetchConversations();
+             }
+          } else if (line.startsWith('data: ')) {
             const content = line.slice(6);
             if (content === '[DONE]') continue;
             
@@ -174,14 +183,6 @@ function App() {
               newMessages[newMessages.length - 1].content = assistantContent;
               return newMessages;
             });
-          } else if (line.startsWith('event: metadata')) {
-            // Wait for next line for data
-          } else if (line.startsWith('data: {"conversation_id"')) {
-             const data = JSON.parse(line.slice(6));
-             if (!activeConvId) {
-                setActiveConvId(data.conversation_id);
-                fetchConversations();
-             }
           }
         }
       }

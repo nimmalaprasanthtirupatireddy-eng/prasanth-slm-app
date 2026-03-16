@@ -11,10 +11,10 @@ class RAGHandler:
             model_name="all-MiniLM-L6-v2",
             cache_folder=os.path.join(os.getcwd(), "models", "embeddings")
         )
-        # Initialize text splitter
+        # Initialize text splitter - smaller chunks for better granularity on dense docs like resumes
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
+            chunk_size=600,
+            chunk_overlap=150,
             add_start_index=True
         )
         # Vector store storage path
@@ -40,7 +40,7 @@ class RAGHandler:
         # Save local index
         self.vector_store.save_local(self.db_path)
 
-    def get_context(self, query: str, k: int = 5) -> str:
+    def get_context(self, query: str, k: int = 7) -> str:
         """Search the vector store for relevant chunks."""
         if self.vector_store is None:
             # Try loading existing index if present
