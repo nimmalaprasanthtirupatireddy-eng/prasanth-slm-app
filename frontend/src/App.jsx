@@ -9,11 +9,22 @@ function App() {
   const [activeConvId, setActiveConvId] = useState(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) setIsSidebarOpen(true);
+      else setIsSidebarOpen(false);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -42,6 +53,7 @@ function App() {
   };
 
   const fetchMessages = async (convId) => {
+    if (window.innerWidth <= 768) setIsSidebarOpen(false);
     setIsLoading(true);
     try {
       const response = await fetch(`/api/conversations/${convId}/messages`, {
@@ -109,6 +121,7 @@ function App() {
   const startNewChat = () => {
     setActiveConvId(null);
     setMessages([]);
+    if (window.innerWidth <= 768) setIsSidebarOpen(false);
   };
 
   if (!isLoggedIn) {
@@ -117,18 +130,28 @@ function App() {
 
   return (
     <div style={{ display: 'flex' }}>
+      {isSidebarOpen && window.innerWidth <= 768 && (
+        <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)} />
+      )}
       <Sidebar 
         conversations={conversations} 
         activeConv={activeConvId} 
         onSelectConv={fetchMessages}
         onNewChat={startNewChat}
         onLogout={handleLogout}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
       
-      <div className="main-content app-container">
+      <div className={`main-content app-container ${!isSidebarOpen ? 'full' : ''}`}>
         <header className="header">
-          <div className="title-group">
-            <h1>Qwen2.5 <span style={{ fontWeight: 300, color: 'var(--text-muted)' }}>Mobile</span></h1>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button className="mobile-menu-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+              ☰
+            </button>
+            <div className="title-group">
+              <h1>Qwen2.5 <span style={{ fontWeight: 300, color: 'var(--text-muted)' }}>Mobile</span></h1>
+            </div>
           </div>
           <div className="status-badge">
             <div className="status-dot"></div>

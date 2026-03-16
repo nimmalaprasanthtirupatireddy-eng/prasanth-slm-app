@@ -1,9 +1,11 @@
 import React from 'react';
 
-const Sidebar = ({ conversations, activeConv, onSelectConv, onNewChat, onLogout }) => {
+const Sidebar = ({ conversations, activeConv, onSelectConv, onNewChat, onLogout, isOpen, onClose }) => {
   return (
-    <div className="sidebar">
-      <button className="new-chat-btn" onClick={onNewChat}>
+    <div className={`sidebar ${!isOpen ? 'closed' : ''}`}>
+      <button className="sidebar-close-btn" onClick={onClose}>&times;</button>
+      
+      <button className="new-chat-btn" onClick={() => { onNewChat(); onClose(); }}>
         <span>+</span> New Chat
       </button>
       
@@ -12,7 +14,7 @@ const Sidebar = ({ conversations, activeConv, onSelectConv, onNewChat, onLogout 
           <div 
             key={conv.id} 
             className={`conv-item ${activeConv === conv.id ? 'active' : ''}`}
-            onClick={() => onSelectConv(conv.id)}
+            onClick={() => { onSelectConv(conv.id); onClose(); }}
           >
             {conv.title}
           </div>
