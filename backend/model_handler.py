@@ -17,16 +17,26 @@ class ModelHandler:
         )
 
     def generate_response(self, messages: List[ChatMessage], max_tokens: int = 512, temperature: float = 0.7):
-        # Convert Pydantic messages to list of dicts for llama-cpp
         formatted_messages = [{"role": msg.role, "content": msg.content} for msg in messages]
-        
         response = self.llm.create_chat_completion(
             messages=formatted_messages,
             max_tokens=max_tokens,
             temperature=temperature
         )
-        
         return response['choices'][0]['message']['content']
+
+    def generate_stream(self, messages: List[ChatMessage], max_tokens: int = 512, temperature: float = 0.7):
+        formatted_messages = [{"role": msg.role, "content": msg.content} for msg in messages]
+        stream = self.llm.create_chat_completion(
+            messages=formatted_messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            stream=True
+        )
+        for chunk in stream:
+            delta = chunk['choices'][0]['delta']
+            if 'content' in delta:
+                yield delta['content']
 
 # Singleton instance
 model_handler = None

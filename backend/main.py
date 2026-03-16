@@ -1,10 +1,13 @@
 import uuid
-from fastapi import FastAPI, HTTPException, Depends, status
+import os
+import io
+from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List
-import os
+from typing import List, Optional
+import pypdf
 
 from . import schemas, model_handler, database, models, auth
 
@@ -74,7 +77,62 @@ def get_conversation_messages(
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation.messages
 
-@app.post("/api/chat", response_model=schemas.ChatResponse)
+@app.patch("/api/conversations/{conversation_id}", response_model=schemas.ConversationResponse)
+def update_conversation(
+    conversation_id: str,
+    update: schemas.ConversationUpdate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    conversation = db.query(models.Conversation).filter(
+        models.Conversation.id == conversation_id,
+        models.Conversation.user_id == current_user.id
+    ).first()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    conversation.title = update.title
+    db.commit()
+    db.refresh(conversation)
+    return conversation
+
+@app.delete("/api/conversations/{conversation_id}")
+def delete_conversation(
+    conversation_id: str,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    conversation = db.query(models.Conversation).filter(
+        models.Conversation.id == conversation_id,
+        models.Conversation.user_id == current_user.id
+    ).first()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    
+    # Delete associated messages first (manual due to SQLite constraints sometimes)
+    db.query(models.Message).filter(models.Message.conversation_id == conversation_id).delete()
+    db.delete(conversation)
+    db.commit()
+    return {"status": "deleted"}
+
+@app.post("/api/upload", response_model=schemas.FileUploadResponse)
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    content = ""
+    filename = file.filename
+    if filename.endswith(".pdf"):
+        pdf_reader = pypdf.PdfReader(io.BytesIO(await file.read()))
+        for page in pdf_reader.pages:
+            content += page.extract_text() + "\n"
+    else:
+        # Default to text
+        file_bytes = await file.read()
+        content = file_bytes.decode("utf-8", errors="ignore")
+    
+    return {"content": content, "filename": filename}
+
+@app.post("/api/chat")
 async def chat(
     request: schemas.ChatRequest, 
     db: Session = Depends(database.get_db),
@@ -86,7 +144,6 @@ async def chat(
         # Create new conversation if ID not provided
         if not conv_id:
             conv_id = str(uuid.uuid4())
-            # Auto-generate title from first message
             title = (request.messages[0].content[:30] + "...") if request.messages else "New Chat"
             new_conv = models.Conversation(id=conv_id, title=title, user_id=current_user.id)
             db.add(new_conv)
@@ -96,26 +153,37 @@ async def chat(
         last_msg = request.messages[-1]
         user_msg = models.Message(conversation_id=conv_id, role="user", content=last_msg.content)
         db.add(user_msg)
-
-        # Generate LLM response
-        handler = model_handler.get_model_handler()
-        content = handler.generate_response(
-            messages=request.messages,
-            max_tokens=request.max_tokens,
-            temperature=request.temperature
-        )
-
-        # Save assistant message
-        assistant_msg = models.Message(conversation_id=conv_id, role="assistant", content=content)
-        db.add(assistant_msg)
         db.commit()
 
-        return schemas.ChatResponse(
-            id=str(uuid.uuid4()),
-            role="assistant",
-            content=content,
-            conversation_id=conv_id
-        )
+        async def stream_generator():
+            handler = model_handler.get_model_handler()
+            full_content = ""
+            
+            # Send initial metadata
+            yield f"event: metadata\ndata: {{\"conversation_id\": \"{conv_id}\"}}\n\n"
+            
+            for chunk in handler.generate_stream(
+                messages=request.messages,
+                max_tokens=request.max_tokens,
+                temperature=request.temperature
+            ):
+                full_content += chunk
+                yield f"data: {chunk}\n\n"
+            
+            # Save assistant message at the end
+            # We need a new session here because this is an async generator
+            new_db = database.SessionLocal()
+            try:
+                assistant_msg = models.Message(conversation_id=conv_id, role="assistant", content=full_content)
+                new_db.add(assistant_msg)
+                new_db.commit()
+            finally:
+                new_db.close()
+            
+            yield "event: end\ndata: [DONE]\n\n"
+
+        return StreamingResponse(stream_generator(), media_type="text/event-stream")
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))

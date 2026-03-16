@@ -485,13 +485,148 @@ textarea::placeholder {
   }
 }
 
-.sidebar-close-btn {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
+/* Markdown Styling */
+.markdown-content {
+  line-height: 1.6;
+}
+
+.markdown-content p {
+  margin-bottom: 1rem;
+}
+
+.markdown-content code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+
+.markdown-content pre {
+  background: #1e1e1e !important;
+  border-radius: 0.75rem !important;
+  margin: 1rem 0 !important;
+  padding: 1rem !important;
+  border: 1px solid var(--glass-border) !important;
+}
+
+.markdown-content pre code {
+  background: transparent;
+  padding: 0;
+  display: block;
+  overflow-x: auto;
+}
+
+.markdown-content ul, .markdown-content ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.markdown-content th, .markdown-content td {
+  border: 1px solid var(--glass-border);
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.markdown-content th {
+  background: var(--glass);
+}
+
+/* Sidebar Actions */
+.conv-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 0.5rem;
+}
+
+.conv-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conv-actions {
+  display: flex;
+  gap: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.conv-item:hover .conv-actions {
+  opacity: 1;
+}
+
+.action-btn {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 1.5rem;
   cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.action-btn.delete:hover {
+  color: #ff4d4d;
+}
+
+/* File Upload Styles */
+.file-upload-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.file-upload-btn:hover {
+  color: var(--accent);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.file-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  padding: 0.25rem 0.75rem;
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+  width: fit-content;
+}
+
+.file-badge button {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+/* Message Bubble Updates */
+.message.assistant {
+  max-width: 95%;
 }
